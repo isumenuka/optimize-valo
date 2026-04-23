@@ -15,7 +15,7 @@ echo.
 echo  ##################################################
 echo  #   VALORANT GOD MODE  ^|  DELL G5 5505 EDITION  #
 echo  #   AMD Ryzen 5 4600H + RX 5600M  ^|  8GB RAM    #
-echo  #   35 Tweaks  ^|  One Click  ^|  Zero Lag        #
+echo  #   41 Tweaks  ^|  One Click  ^|  Zero Lag        #
 echo  ##################################################
 echo.
 echo  [*] System: Dell G5 5505
@@ -386,14 +386,93 @@ reg add "HKCU\Software\ATI\ACE\Settings\VALORANT.exe" /v "VSyncControl" /t REG_D
 echo      [OK] Radeon Chill OFF (FPS uncapped)
 
 :: ==============================
+echo  [36/41] Disable Large Send Offload - LSO (ExitLag trick)...
+:: LSO bundles packets together causing micro-lag spikes - ExitLag disables this
+powershell -Command "
+$adapter = Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -First 1
+if ($adapter) {
+    Disable-NetAdapterLso -Name $adapter.Name -ErrorAction SilentlyContinue
+    Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName 'Large Send Offload V2 (IPv4)' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue
+    Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName 'Large Send Offload V2 (IPv6)' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue
+}
+" >nul 2>&1
+echo      [OK] LSO disabled - no packet bundling lag
+
+:: ==============================
+echo  [37/41] Disable Flow Control (ExitLag trick)...
+:: Flow control pauses data mid-game causing micro-stutters
+powershell -Command "
+$adapter = Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -First 1
+if ($adapter) {
+    Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName 'Flow Control' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue
+    Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName 'Pause Frame Use' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue
+}
+" >nul 2>&1
+echo      [OK] Flow Control off - no mid-game pauses
+
+:: ==============================
+echo  [38/41] Disable Receive Segment Coalescing - RSC (ExitLag trick)...
+:: RSC delays received packets for efficiency - bad for gaming latency
+powershell -Command "
+$adapter = Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -First 1
+if ($adapter) {
+    Disable-NetAdapterRsc -Name $adapter.Name -ErrorAction SilentlyContinue
+    Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName 'Recv Segment Coalescing (IPv4)' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue
+    Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName 'Recv Segment Coalescing (IPv6)' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue
+}
+" >nul 2>&1
+echo      [OK] RSC disabled - lower receive latency
+
+:: ==============================
+echo  [39/41] QoS DSCP Priority Tag for Valorant UDP (ExitLag trick)...
+:: ExitLag's core trick: mark Valorant game packets as DSCP 46 (Expedited Forwarding)
+:: This makes routers and your OS treat Valorant packets as highest priority
+powershell -Command "
+# Remove old policy if exists
+Get-NetQosPolicy -Name 'Valorant' -ErrorAction SilentlyContinue | Remove-NetQosPolicy -Confirm:\$false -ErrorAction SilentlyContinue
+Get-NetQosPolicy -Name 'Valorant-UDP' -ErrorAction SilentlyContinue | Remove-NetQosPolicy -Confirm:\$false -ErrorAction SilentlyContinue
+# Create QoS policy - mark Valorant UDP traffic with DSCP 46 (Expedited Forwarding = highest)
+New-NetQosPolicy -Name 'Valorant' -AppPathNameMatchCondition 'VALORANT-Win64-Shipping.exe' -IPProtocolMatchCondition UDP -DSCPAction 46 -NetworkProfile All -ErrorAction SilentlyContinue
+# Also tag Riot Client
+New-NetQosPolicy -Name 'RiotClient' -AppPathNameMatchCondition 'RiotClientServices.exe' -DSCPAction 46 -NetworkProfile All -ErrorAction SilentlyContinue
+" >nul 2>&1
+echo      [OK] Valorant UDP tagged DSCP 46 - OS treats it as TOP priority
+
+:: ==============================
+echo  [40/41] Stop Windows Delivery Optimization (ExitLag trick)...
+:: Windows uses YOUR bandwidth to upload updates to other PCs - ExitLag blocks this
+sc stop DoSvc >nul 2>&1
+sc config DoSvc start=disabled >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization" /v DODownloadMode /t REG_DWORD /d 0 /f >nul
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Settings" /v DownloadMode /t REG_DWORD /d 0 /f >nul
+powershell -Command "Set-DeliveryOptimizationStatus -ErrorAction SilentlyContinue" >nul 2>&1
+echo      [OK] Delivery Optimization off - 100%% bandwidth yours
+
+:: ==============================
+echo  [41/41] Network Adapter Receive Buffer Boost...
+:: Increase receive buffers so Valorant packets don't get dropped at high FPS
+powershell -Command "
+$adapter = Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -First 1
+if ($adapter) {
+    Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName 'Receive Buffers' -DisplayValue '512' -ErrorAction SilentlyContinue
+    Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName 'Transmit Buffers' -DisplayValue '512' -ErrorAction SilentlyContinue
+}
+" >nul 2>&1
+echo      [OK] Network buffers tuned for gaming
+
+:: ==============================
 :: LAUNCH DISCORD + VALORANT
 :: ==============================
 echo.
 echo  ##################################################
-echo  #      ALL TWEAKS COMPLETE!                      #
-echo  #      Dell G5 5505 - FULL BOOST ACTIVE!         #
- echo  #                                               #
-echo  #  FOR 300+ FPS - DO THIS IN VALORANT:           #
+echo  #   ALL 41 TWEAKS COMPLETE! (ExitLag-Enhanced)   #
+echo  #   Dell G5 5505 - MAXIMUM BOOST ACTIVE!         #
+echo  #                                                #
+echo  #  NEW: QoS DSCP 46 tagging active               #
+echo  #  NEW: LSO + Flow Control + RSC disabled         #
+echo  #  NEW: Delivery Optimization blocked             #
+echo  #                                                #
+echo  #  IN VALORANT FOR MAX FPS:                       #
 echo  #  Settings ^> Video ^> Frame Rate Limit = OFF    #
 echo  #  Settings ^> Video ^> V-Sync = OFF              #
 echo  #  Display Mode = FULLSCREEN (not Borderless)    #

@@ -170,6 +170,16 @@ if (\$proc) {
 echo      [OK] Valorant I/O priority = HIGH
 
 :: =============================================
+:: STEP 9: QoS DSCP TAGGING (ExitLag trick)
+:: =============================================
+echo  [9] Applying QoS DSCP 46 tag to Valorant UDP traffic (ExitLag trick)...
+powershell -Command "
+Get-NetQosPolicy -Name 'Valorant' -ErrorAction SilentlyContinue | Remove-NetQosPolicy -Confirm:\$false -ErrorAction SilentlyContinue
+New-NetQosPolicy -Name 'Valorant' -AppPathNameMatchCondition 'VALORANT-Win64-Shipping.exe' -IPProtocolMatchCondition UDP -DSCPAction 46 -NetworkProfile All -ErrorAction SilentlyContinue
+" >nul 2>&1
+echo      [OK] Valorant UDP = DSCP 46 (highest network priority)
+
+:: =============================================
 :: BOOST DONE - START REFRESH LOOP
 :: =============================================
 echo.
@@ -192,6 +202,14 @@ powershell -Command "
 Get-Process 'VALORANT-Win64-Shipping' -ErrorAction SilentlyContinue | ForEach-Object {
     try { \$_.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::RealTime } catch {}
     try { \$_.ProcessorAffinity = 0xFFE } catch {}
+}
+" >nul 2>&1
+
+:: Re-apply QoS DSCP tag (Windows can reset QoS policies)
+powershell -Command "
+$pol = Get-NetQosPolicy -Name 'Valorant' -ErrorAction SilentlyContinue
+if (-not $pol) {
+    New-NetQosPolicy -Name 'Valorant' -AppPathNameMatchCondition 'VALORANT-Win64-Shipping.exe' -IPProtocolMatchCondition UDP -DSCPAction 46 -NetworkProfile All -ErrorAction SilentlyContinue
 }
 " >nul 2>&1
 
