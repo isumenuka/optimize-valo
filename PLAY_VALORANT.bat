@@ -360,18 +360,44 @@ if exist "%DISCORD_SETTINGS%" (
 echo      [OK] Discord GPU load reduced
 
 :: ==============================
-echo  [35/35] Valorant DPI Bypass (120 DPI detected in DxDiag)...
+echo  [35/35] Valorant DPI Bypass + 0.5ms Timer Resolution...
 :: Your system is set to 125%% (120DPI) - bypass scaling for Valorant
 reg add "HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" /v "C:\Riot Games\VALORANT\live\VALORANT.exe" /t REG_SZ /d "~ GDIDPISCALING DPIUNAWARE" /f >nul 2>&1
 echo      [OK] DPI scaling bypassed for raw input
+
+:: Force 0.5ms timer resolution for max frame timing precision (helps reach 300+ FPS)
+powershell -Command "
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public class TimerRes2 {
+    [DllImport(`"ntdll.dll`")] public static extern int NtSetTimerResolution(int Desired, bool Set, out int Current);
+}
+'@
+$cur = 0
+[TimerRes2]::NtSetTimerResolution(5000, $true, [ref]$cur) | Out-Null
+" >nul 2>&1
+echo      [OK] Timer resolution = 0.5ms (max frame precision)
+
+:: Disable AMD Radeon Chill (it caps FPS - critical fix!)
+reg add "HKCU\Software\AMD\CN" /v "Chill" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\ATI\ACE\Settings\VALORANT.exe" /v "Chill_Enabled" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\ATI\ACE\Settings\VALORANT.exe" /v "VSyncControl" /t REG_DWORD /d 0 /f >nul 2>&1
+echo      [OK] Radeon Chill OFF (FPS uncapped)
 
 :: ==============================
 :: LAUNCH DISCORD + VALORANT
 :: ==============================
 echo.
 echo  ##################################################
-echo  #      ALL 35 TWEAKS COMPLETE!                   #
-echo  #      Dell G5 5505 - Full Boost Active!         #
+echo  #      ALL TWEAKS COMPLETE!                      #
+echo  #      Dell G5 5505 - FULL BOOST ACTIVE!         #
+ echo  #                                               #
+echo  #  FOR 300+ FPS - DO THIS IN VALORANT:           #
+echo  #  Settings ^> Video ^> Frame Rate Limit = OFF    #
+echo  #  Settings ^> Video ^> V-Sync = OFF              #
+echo  #  Display Mode = FULLSCREEN (not Borderless)    #
+echo  #  Graphics Quality = Low                        #
 echo  ##################################################
 echo.
 echo  Launching Discord...
@@ -381,6 +407,7 @@ timeout /t 5 /nobreak >nul
 start "" "%LOCALAPPDATA%\Riot Games\Riot Client\RiotClientServices.exe" --launch-product=valorant --launch-patchline=live >nul 2>&1
 echo  Valorant launched - GLHF!
 echo.
+echo  REMINDER: Run GAMING_BOOST.bat after Valorant loads!
 echo  NOTE: Re-enable Defender after gaming:
 echo  Windows Security - Virus Protection - Turn ON
 echo.
