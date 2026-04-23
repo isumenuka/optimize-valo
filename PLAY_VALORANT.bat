@@ -27,6 +27,34 @@ echo.
 timeout /t 2 /nobreak >nul
 
 :: ==============================
+echo  [PRE] Closing all open apps (keep Discord + Valorant only)...
+:: Kill common browsers
+for %%P in (chrome.exe firefox.exe msedge.exe opera.exe brave.exe iexplore.exe) do (
+    taskkill /f /im %%P >nul 2>&1
+)
+:: Kill communication apps except Discord
+for %%P in (Teams.exe Slack.exe Zoom.exe Skype.exe SkypeApp.exe telegram.exe WhatsApp.exe) do (
+    taskkill /f /im %%P >nul 2>&1
+)
+:: Kill media & streaming
+for %%P in (Spotify.exe vlc.exe wmplayer.exe iTunes.exe obs64.exe obs32.exe) do (
+    taskkill /f /im %%P >nul 2>&1
+)
+:: Kill productivity
+for %%P in (WINWORD.EXE EXCEL.EXE POWERPNT.EXE OUTLOOK.EXE notepad.exe notepad++.exe) do (
+    taskkill /f /im %%P >nul 2>&1
+)
+:: Kill other launchers/games (not Valorant/Riot)
+for %%P in (steam.exe EpicGamesLauncher.exe Battle.net.exe GalaxyClient.exe) do (
+    taskkill /f /im %%P >nul 2>&1
+)
+:: Kill misc background stuff
+for %%P in (OneDrive.exe Cortana.exe YourPhone.exe SearchApp.exe) do (
+    taskkill /f /im %%P >nul 2>&1
+)
+echo      [OK] All non-essential apps closed
+
+:: ==============================
 echo  [1/35] Ultimate Power Plan...
 powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 >nul 2>&1
 powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61 >nul 2>&1
@@ -131,10 +159,11 @@ echo      [OK] Background apps off
 
 :: ==============================
 echo  [12/35] Kill Junk Processes...
-for %%P in (OneDrive.exe Cortana.exe YourPhone.exe SearchApp.exe SearchIndexer.exe SpeechRuntime.exe backgroundTaskHost.exe RuntimeBroker.exe Teams.exe msedge.exe SkypeApp.exe) do (
+:: NOTE: RuntimeBroker.exe is kept alive - killing it breaks Windows key and Alt+Tab!
+for %%P in (OneDrive.exe Cortana.exe YourPhone.exe SearchApp.exe SearchIndexer.exe SpeechRuntime.exe backgroundTaskHost.exe Teams.exe msedge.exe SkypeApp.exe) do (
     taskkill /f /im %%P >nul 2>&1
 )
-echo      [OK] Junk processes killed
+echo      [OK] Junk processes killed (RuntimeBroker preserved for hotkeys)
 
 :: ==============================
 echo  [13/35] Stop Heavy Services...
@@ -170,12 +199,13 @@ echo      [OK] Mouse acceleration OFF
 :: ==============================
 echo  [17/35] Disable Game Bar + Xbox DVR (stops stutters)...
 reg add "HKCU\System\GameConfigStore" /v GameDVR_Enabled /t REG_DWORD /d 0 /f >nul
-reg add "HKCU\System\GameConfigStore" /v GameDVR_FSEBehaviorMode /t REG_DWORD /d 2 /f >nul
+:: FSEBehaviorMode=0 keeps Alt+Tab and Windows key working (mode 2 breaks them!)
+reg add "HKCU\System\GameConfigStore" /v GameDVR_FSEBehaviorMode /t REG_DWORD /d 0 /f >nul
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v AllowGameDVR /t REG_DWORD /d 0 /f >nul
 reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" /v AppCaptureEnabled /t REG_DWORD /d 0 /f >nul
 reg add "HKCU\SOFTWARE\Microsoft\GameBar" /v UseNexusForGameBarEnabled /t REG_DWORD /d 0 /f >nul
 reg add "HKCU\SOFTWARE\Microsoft\GameBar" /v ShowStartupPanel /t REG_DWORD /d 0 /f >nul
-echo      [OK] Game Bar + DVR off - no stutters
+echo      [OK] Game Bar + DVR off - no stutters (hotkeys preserved)
 
 :: ==============================
 echo  [18/35] Audio Latency Fix - MSI Maestro 300 + Realtek...
@@ -205,12 +235,14 @@ reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpd
 echo      [OK] Windows Update paused
 
 :: ==============================
-echo  [21/35] Force True Exclusive Fullscreen...
-reg add "HKCU\System\GameConfigStore" /v GameDVR_FSEBehavior /t REG_DWORD /d 2 /f >nul
-reg add "HKCU\System\GameConfigStore" /v GameDVR_DXGIHonorFSEWindowsCompatible /t REG_DWORD /d 1 /f >nul
-reg add "HKCU\System\GameConfigStore" /v GameDVR_HonorUserFSEBehaviorMode /t REG_DWORD /d 1 /f >nul
+echo  [21/35] Borderless Fullscreen (keeps Alt+Tab + Win key working)...
+:: Using borderless instead of true exclusive - Alt+Tab and Win key stay functional
+:: True exclusive (FSEBehavior=2) breaks Alt+Tab switching between Discord and game
+reg add "HKCU\System\GameConfigStore" /v GameDVR_FSEBehavior /t REG_DWORD /d 0 /f >nul
+reg add "HKCU\System\GameConfigStore" /v GameDVR_DXGIHonorFSEWindowsCompatible /t REG_DWORD /d 0 /f >nul
+reg add "HKCU\System\GameConfigStore" /v GameDVR_HonorUserFSEBehaviorMode /t REG_DWORD /d 0 /f >nul
 reg add "HKCU\System\GameConfigStore" /v GameDVR_EFSEFeatureFlags /t REG_DWORD /d 0 /f >nul
-echo      [OK] True exclusive fullscreen forced
+echo      [OK] Borderless fullscreen - Alt+Tab and Win key work fine
 
 :: ==============================
 echo  [22/35] Defender Off + Valorant Excluded...
