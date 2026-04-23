@@ -12,19 +12,51 @@ if %errorLevel% neq 0 (
 cls
 color 0a
 echo.
-echo  ##################################################
-echo  #   VALORANT GOD MODE  ^|  DELL G5 5505 EDITION  #
-echo  #   AMD Ryzen 5 4600H + RX 5600M  ^|  8GB RAM    #
-echo  #   41 Tweaks  ^|  One Click  ^|  Zero Lag        #
-echo  ##################################################
+echo  ================================================================
+echo  ^|                                                              ^|
+echo  ^|        V A L O R A N T   G O D   M O D E                   ^|
+echo  ^|            Dell G5 5505  ^|  All-in-One Launcher             ^|
+echo  ^|                                                             ^|
+echo  ^|   CPU : AMD Ryzen 5 4600H (6C/12T)                         ^|
+echo  ^|   GPU : AMD Radeon RX 5600M (6GB VRAM)                     ^|
+echo  ^|   RAM : 8 GB                                                ^|
+echo  ^|                                                             ^|
+echo  ^|   Runs: FPS_UNCAP  +  DEEP_BOOST  +  41 Tweaks             ^|
+echo  ^|         + GAMING_BOOST auto-starts after launch            ^|
+echo  ^|   Just double-click this. Nothing else needed.             ^|
+echo  ^|                                                             ^|
+echo  ================================================================
 echo.
-echo  [*] System: Dell G5 5505
-echo  [*] CPU:    AMD Ryzen 5 4600H (6C/12T)
-echo  [*] GPU:    AMD Radeon RX 5600M (6GB)
-echo  [*] RAM:    8192 MB
-echo  [*] Admin:  OK
+echo  [*] Admin: OK
+echo  [*] Time : %date% %time%
 echo.
 timeout /t 2 /nobreak >nul
+
+:: ================================================================
+:: STEP 0: Auto-run companion scripts first
+:: ================================================================
+echo  [LAUNCHER] Running FPS_UNCAP.bat (config patches)...
+if exist "%~dp0FPS_UNCAP.bat" (
+    call "%~dp0FPS_UNCAP.bat" >nul 2>&1
+    echo      [OK] FPS_UNCAP complete
+) else (
+    echo      [WARN] FPS_UNCAP.bat not found - skipping
+)
+
+echo  [LAUNCHER] Running DEEP_BOOST.bat (advanced system tweaks)...
+if exist "%~dp0DEEP_BOOST.bat" (
+    call "%~dp0DEEP_BOOST.bat" >nul 2>&1
+    echo      [OK] DEEP_BOOST complete
+) else (
+    echo      [WARN] DEEP_BOOST.bat not found - skipping
+)
+
+echo.
+echo  [LAUNCHER] Now applying 41 network + system tweaks...
+echo  ================================================================
+echo.
+timeout /t 1 /nobreak >nul
+
 
 :: ==============================
 echo  [PRE] Closing all open apps (keep Discord + Valorant only)...
@@ -461,34 +493,48 @@ if ($adapter) {
 echo      [OK] Network buffers tuned for gaming
 
 :: ==============================
-:: LAUNCH DISCORD + VALORANT
+:: LAUNCH DISCORD + VALORANT + AUTO-START GAMING_BOOST
 :: ==============================
 echo.
-echo  ##################################################
-echo  #   ALL 41 TWEAKS COMPLETE! (ExitLag-Enhanced)   #
-echo  #   Dell G5 5505 - MAXIMUM BOOST ACTIVE!         #
-echo  #                                                #
-echo  #  NEW: QoS DSCP 46 tagging active               #
-echo  #  NEW: LSO + Flow Control + RSC disabled         #
-echo  #  NEW: Delivery Optimization blocked             #
-echo  #                                                #
-echo  #  IN VALORANT FOR MAX FPS:                       #
-echo  #  Settings ^> Video ^> Frame Rate Limit = OFF    #
-echo  #  Settings ^> Video ^> V-Sync = OFF              #
-echo  #  Display Mode = FULLSCREEN (not Borderless)    #
-echo  #  Graphics Quality = Low                        #
-echo  ##################################################
+echo  ================================================================
+echo  ^|   ALL TWEAKS COMPLETE! Launching your game...              ^|
+echo  ^|                                                             ^|
+echo  ^|   FPS_UNCAP    : [DONE]                                    ^|
+echo  ^|   DEEP_BOOST   : [DONE]                                    ^|
+echo  ^|   41 Tweaks    : [DONE]  (QoS DSCP46 + LSO + RSC off)     ^|
+echo  ^|   GAMING_BOOST : [STARTING after Valorant loads]           ^|
+echo  ^|                                                             ^|
+echo  ^|   IN VALORANT FOR MAX FPS:                                 ^|
+echo  ^|     Settings > Video > Frame Rate Limit = Uncapped         ^|
+echo  ^|     Settings > Video > V-Sync           = OFF              ^|
+echo  ^|     Display Mode = Fullscreen (NOT Borderless)             ^|
+echo  ^|     Graphics Quality = Low / All settings minimum          ^|
+echo  ^|                                                             ^|
+echo  ================================================================
 echo.
-echo  Launching Discord...
+
+echo  [1/3] Launching Discord...
 start "" "%LOCALAPPDATA%\Discord\Update.exe" --processStart Discord.exe >nul 2>&1
-echo  Waiting 5 seconds then launching Valorant...
+echo      [OK] Discord started
+
+echo  [2/3] Waiting 5 seconds then launching Valorant...
 timeout /t 5 /nobreak >nul
 start "" "%LOCALAPPDATA%\Riot Games\Riot Client\RiotClientServices.exe" --launch-product=valorant --launch-patchline=live >nul 2>&1
-echo  Valorant launched - GLHF!
+echo      [OK] Valorant launched - GLHF!
+
+echo  [3/3] Starting GAMING_BOOST runtime keeper...
+if exist "%~dp0GAMING_BOOST.bat" (
+    start "GAMING BOOST - Keep Alive" cmd /c ""%~dp0GAMING_BOOST.bat""
+    echo      [OK] GAMING_BOOST.bat running in separate window
+) else (
+    echo      [WARN] GAMING_BOOST.bat not found - skipping
+)
+
 echo.
-echo  REMINDER: Run GAMING_BOOST.bat after Valorant loads!
-echo  NOTE: Re-enable Defender after gaming:
-echo  Windows Security - Virus Protection - Turn ON
+echo  ================================================================
+echo  ^|   EVERYTHING IS RUNNING. You can close this window.        ^|
+echo  ^|   GAMING_BOOST window stays open until Valorant closes.    ^|
+echo  ================================================================
 echo.
-timeout /t 8 /nobreak >nul
+timeout /t 5 /nobreak >nul
 exit
