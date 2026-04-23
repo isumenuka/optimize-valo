@@ -197,74 +197,44 @@ if errorlevel 1 goto VALORANT_CLOSED
 
 echo  [LIVE] %time% - Refreshing boost...
 
-:: Set tools path (auto-detect)
-set TOOLS=%~dp0tools
-
-:: --- Re-apply Realtime priority ---
+:: Re-apply Realtime priority (some patches reset it)
 powershell -Command "
 Get-Process 'VALORANT-Win64-Shipping' -ErrorAction SilentlyContinue | ForEach-Object {
     try { \$_.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::RealTime } catch {}
     try { \$_.ProcessorAffinity = 0xFFE } catch {}
 }
 " >nul 2>&1
-echo      [+] Priority/Affinity re-applied
 
-:: --- Re-apply QoS DSCP tag ---
+:: Re-apply QoS DSCP tag (Windows can reset QoS policies)
 powershell -Command "
-\$pol = Get-NetQosPolicy -Name 'Valorant' -ErrorAction SilentlyContinue
-if (-not \$pol) { New-NetQosPolicy -Name 'Valorant' -AppPathNameMatchCondition 'VALORANT-Win64-Shipping.exe' -IPProtocolMatchCondition UDP -DSCPAction 46 -NetworkProfile All -ErrorAction SilentlyContinue }
+$pol = Get-NetQosPolicy -Name 'Valorant' -ErrorAction SilentlyContinue
+if (-not $pol) {
+    New-NetQosPolicy -Name 'Valorant' -AppPathNameMatchCondition 'VALORANT-Win64-Shipping.exe' -IPProtocolMatchCondition UDP -DSCPAction 46 -NetworkProfile All -ErrorAction SilentlyContinue
+}
 " >nul 2>&1
-echo      [+] QoS DSCP 46 verified
 
-:: --- Kill any bloat that respawned (uses pskill if available) ---
-if exist "%TOOLS%\pskill.exe" (
-    "%TOOLS%\pskill.exe" -t SearchApp.exe >nul 2>&1
-    "%TOOLS%\pskill.exe" -t StartMenuExperienceHost.exe >nul 2>&1
-    "%TOOLS%\pskill.exe" -t ShellExperienceHost.exe >nul 2>&1
-    "%TOOLS%\pskill.exe" -t WmiPrvSE.exe >nul 2>&1
-    echo      [+] pskill: respawned bloat killed
-) else (
-    taskkill /f /im SearchApp.exe >nul 2>&1
-    taskkill /f /im WmiPrvSE.exe >nul 2>&1
-    echo      [+] taskkill: bloat killed
-)
-
-:: --- Clear Standby RAM (uses EmptyStandbyList if available) ---
-if exist "%TOOLS%\EmptyStandbyList.exe" (
-    "%TOOLS%\EmptyStandbyList.exe"
-    echo      [+] EmptyStandbyList: Standby RAM purged
-) else (
-    :: Native fallback using NtSetSystemInformation
-    powershell -Command "
-    try {
-        Add-Type -TypeDefinition @'
-using System; using System.Runtime.InteropServices;
-public class StandbyFlusher {
-    [DllImport(""ntdll.dll"")] public static extern int NtSetSystemInformation(int c, IntPtr p, int l);
+:: Trim RAM again
+powershell -Command "
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public class MemoryHelper2 {
+    [DllImport(\"kernel32.dll\")] public static extern bool SetProcessWorkingSetSize(IntPtr hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
 }
 '@
-        \$p = [System.Runtime.InteropServices.Marshal]::AllocHGlobal(4)
-        [System.Runtime.InteropServices.Marshal]::WriteInt32(\$p, 4)
-        [StandbyFlusher]::NtSetSystemInformation(80, \$p, 4) | Out-Null
-        [System.Runtime.InteropServices.Marshal]::FreeHGlobal(\$p)
-    } catch {}
-    " >nul 2>&1
-    echo      [+] Native: Standby RAM flushed
-)
+\$protected = @('VALORANT-Win64-Shipping','RiotClientServices','discord','audiodg')
+Get-Process | ForEach-Object {
+    \$name = \$_.ProcessName
+    \$skip = \$false
+    foreach (\$p in \$protected) { if (\$name -like \$p) { \$skip = \$true; break } }
+    if (-not \$skip) {
+        try { [MemoryHelper2]::SetProcessWorkingSetSize(\$_.Handle, [IntPtr](-1), [IntPtr](-1)) | Out-Null } catch {}
+    }
+}
+" >nul 2>&1
 
-:: --- Flush DNS ---
 ipconfig /flushdns >nul 2>&1
-echo      [+] DNS flushed
-
-:: --- Ping Valorant Server (uses PingCheck if available) ---
-if exist "%TOOLS%\PingCheck.exe" (
-    for /f "tokens=*" %%P in ('"%TOOLS%\PingCheck.exe" valorant.ap.a.pvp.net') do echo      [NET] %%P
-) else (
-    ping -n 1 -w 2000 1.1.1.1 | find "ms" >nul 2>&1 && echo      [NET] Connection: OK
-)
-
-echo.
-echo      [DONE] Boost refreshed at %time%
+echo      [OK] Boost refreshed - Valorant still running
 echo.
 
 :: Wait 60 seconds then refresh again
