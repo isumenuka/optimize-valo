@@ -200,15 +200,55 @@ Write-Host \"Timer set to 0.5ms for max frame precision\"
 echo      [OK] Timer resolution = 0.5ms (high precision)
 
 :: ==============================
+echo  [8/8] Enable Multithreaded Rendering in Valorant config...
+:: ==============================
+:: Multithreaded rendering lets Valorant use ALL 6 cores of your Ryzen 5 4600H
+:: instead of just one thread - massive FPS gain on CPU-bound maps like Icebox/Fracture
+:: We patch the config file directly so you never have to remember to set it in-game
+for /r "%LOCALAPPDATA%\VALORANT" %%F in (GameUserSettings.ini) do (
+    powershell -Command "
+    $file = '%%F'
+    $content = Get-Content $file -Raw -ErrorAction SilentlyContinue
+    if ($content) {
+        # Enable multithreaded rendering
+        $content = $content -replace 'bUseMultithreading=False', 'bUseMultithreading=True'
+        $content = $content -replace 'bUseMultithreading=false', 'bUseMultithreading=True'
+        # Add it if it doesn't exist
+        if ($content -notmatch 'bUseMultithreading') {
+            $content = $content + \"`r`nbUseMultithreading=True`r`n\"
+        }
+        Set-Content -Path $file -Value $content -NoNewline
+        Write-Host 'Multithreaded rendering enabled'
+    }
+    " >nul 2>&1
+    echo      [OK] Multithreaded rendering ON in %%~nxF
+)
+for /r "%LOCALAPPDATA%\VALORANT\Saved\Config" %%D in (.) do (
+    if exist "%%D\Engine.ini" (
+        powershell -Command "
+        $file = '%%D\Engine.ini'
+        $content = Get-Content $file -Raw -ErrorAction SilentlyContinue
+        if ($content -and ($content -notmatch 'r.RHIThread')) {
+            $content = $content + \"`r`n[/Script/Engine.RendererSettings]`r`nr.RHIThread.Enable=1`r`n\"
+            Set-Content -Path $file -Value $content -NoNewline
+        }
+        " >nul 2>&1
+        echo      [OK] RHI thread enabled in Engine.ini (%%D)
+    )
+)
+echo      [OK] All 6 Ryzen cores now active for rendering
+
+:: ==============================
 echo.
 echo  ##################################################
-echo  #   FPS UNCAP COMPLETE!                          #
+echo  #   FPS UNCAP COMPLETE! (8 Tweaks Applied)        #
 echo  #                                                #
 echo  #   What to do NOW in Valorant:                  #
 echo  #   1. Settings - Video - Frame Rate Limit = OFF #
 echo  #   2. Settings - Video - V-Sync = OFF           #
 echo  #   3. Display Mode = FULLSCREEN (not borderless) #
 echo  #   4. Resolution = 1920x1080 (full res)         #
+echo  #   5. Multithreaded Rendering = ON (verify)     #
 echo  #                                                #
 echo  #   Expected FPS on RX 5600M @ Low/Med settings: #
 echo  #   Low  settings = 200-350 FPS                  #

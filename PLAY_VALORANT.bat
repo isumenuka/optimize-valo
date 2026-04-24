@@ -379,10 +379,13 @@ if exist "%DISCORD_SETTINGS%" (
 echo      [OK] Discord GPU load reduced
 
 :: ==============================
-echo  [35/38] Valorant DPI Bypass + 0.5ms Timer Resolution...
+echo  [35/44] Valorant DPI Bypass + Fullscreen Optimizations OFF + 0.5ms Timer...
 :: Your system is set to 125%% (120DPI) - bypass scaling for Valorant
-reg add "HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" /v "C:\Riot Games\VALORANT\live\VALORANT.exe" /t REG_SZ /d "~ GDIDPISCALING DPIUNAWARE" /f >nul 2>&1
-echo      [OK] DPI scaling bypassed for raw input
+:: DISABLEDXMAXIMIZEDWINDOWEDMODE = disables Fullscreen Optimizations (method #9 from top-20 list)
+:: Without this flag Windows silently forces borderless windowed mode even in "Fullscreen" - adding latency
+reg add "HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" /v "C:\Riot Games\VALORANT\live\VALORANT.exe" /t REG_SZ /d "~ GDIDPISCALING DPIUNAWARE DISABLEDXMAXIMIZEDWINDOWEDMODE" /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" /v "C:\Riot Games\VALORANT\live\VALORANT-Win64-Shipping.exe" /t REG_SZ /d "~ GDIDPISCALING DPIUNAWARE DISABLEDXMAXIMIZEDWINDOWEDMODE" /f >nul 2>&1
+echo      [OK] DPI bypass + TRUE Fullscreen forced (no borderless overhead)
 
 :: Force 0.5ms timer resolution for max frame timing precision (helps reach 300+ FPS)
 powershell -Command "
