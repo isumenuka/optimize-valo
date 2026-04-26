@@ -394,24 +394,151 @@ echo      [OK] Created: PLAY_VALORANT_BOOSTED.bat
 
 :: ============================================================
 echo.
+echo  ========================================================
+echo   MODULE G: 20 WINDOWS TWEAKS FOR VALORANT FPS
+echo  ========================================================
+echo.
+
+echo  [G1] Add Valorant + Riot folders to Defender Exclusions...
+powershell -Command "Add-MpPreference -ExclusionPath 'C:\Riot Games' -ErrorAction SilentlyContinue; Add-MpPreference -ExclusionPath '%LOCALAPPDATA%\VALORANT' -ErrorAction SilentlyContinue; Add-MpPreference -ExclusionPath '%PROGRAMFILES%\Riot Vanguard' -ErrorAction SilentlyContinue; Add-MpPreference -ExclusionProcess 'VALORANT-Win64-Shipping.exe' -ErrorAction SilentlyContinue; Add-MpPreference -ExclusionProcess 'RiotClientServices.exe' -ErrorAction SilentlyContinue" >nul 2>&1
+echo      [OK] Defender exclusions added (no mid-match scanning)
+
+echo  [G2] Delete Valorant PipelineCache (fresh shader rebuild)...
+if exist "%LOCALAPPDATA%\VALORANT\Saved\PipelineCache" (
+    rd /s /q "%LOCALAPPDATA%\VALORANT\Saved\PipelineCache" >nul 2>&1
+    echo      [OK] PipelineCache deleted (fixes shader stutter on patches)
+) else (
+    echo      [--] PipelineCache folder not found (already clean)
+)
+
+echo  [G3] Disable Delivery Optimization (P2P Windows Update)...
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization" /v DODownloadMode /t REG_DWORD /d 0 /f >nul 2>&1
+sc stop DoSvc >nul 2>&1
+sc config DoSvc start=disabled >nul 2>&1
+echo      [OK] Delivery Optimization OFF (no P2P bandwidth drain)
+
+echo  [G4] Disable Windows Update Auto-Download (manual only)...
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpdate /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v AUOptions /t REG_DWORD /d 2 /f >nul 2>&1
+sc config wuauserv start=demand >nul 2>&1
+echo      [OK] Windows Update = notify only, no auto-download
+
+echo  [G5] Disable NTFS Last Access Time updates (less disk I/O)...
+fsutil behavior set disablelastaccess 1 >nul 2>&1
+echo      [OK] NTFS last access timestamps OFF
+
+echo  [G6] Disable 8.3 filename creation (legacy FS overhead)...
+fsutil behavior set disable8dot3 1 >nul 2>&1
+echo      [OK] 8.3 filename creation OFF
+
+echo  [G7] Disable Windows Error Reporting service...
+sc stop WerSvc >nul 2>&1
+sc config WerSvc start=disabled >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /v Disabled /t REG_DWORD /d 1 /f >nul 2>&1
+echo      [OK] WER service disabled (no crash-report CPU spikes)
+
+echo  [G8] Disable Remote Registry service (security + performance)...
+sc stop RemoteRegistry >nul 2>&1
+sc config RemoteRegistry start=disabled >nul 2>&1
+echo      [OK] Remote Registry disabled
+
+echo  [G9] Disable Print Spooler (unused, wastes CPU)...
+sc stop Spooler >nul 2>&1
+sc config Spooler start=disabled >nul 2>&1
+echo      [OK] Print Spooler disabled
+
+echo  [G10] Disable Windows Search Indexing on C:...
+sc stop WSearch >nul 2>&1
+sc config WSearch start=disabled >nul 2>&1
+powershell -Command "Get-WmiObject -Class Win32_Volume -Filter 'DriveLetter=''C:''' | Set-WmiInstance -Arguments @{IndexingEnabled=$false}" >nul 2>&1
+echo      [OK] Search indexing OFF (no disk thrash during gameplay)
+
+echo  [G11] Disable Automatic Maintenance tasks...
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\Maintenance" /v MaintenanceDisabled /t REG_DWORD /d 1 /f >nul 2>&1
+schtasks /Change /TN "Microsoft\Windows\TaskScheduler\Regular Maintenance" /Disable >nul 2>&1
+echo      [OK] Auto-maintenance disabled (no mid-match defrag/cleanup)
+
+echo  [G12] Set processor scheduling to foreground apps...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" /v Win32PrioritySeparation /t REG_DWORD /d 38 /f >nul 2>&1
+echo      [OK] CPU scheduler = foreground app priority
+
+echo  [G13] Disable Windows Tips, Suggestions, and Consumer Experience...
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v SystemPaneSuggestionsEnabled /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v SoftLandingEnabled /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v SubscribedContent-338389Enabled /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v SubscribedContent-338388Enabled /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent" /v DisableWindowsConsumerFeatures /t REG_DWORD /d 1 /f >nul 2>&1
+echo      [OK] Windows Tips + Suggestions disabled
+
+echo  [G14] Disable Windows Ink Workspace (input latency source)...
+reg add "HKLM\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace" /v AllowWindowsInkWorkspace /t REG_DWORD /d 0 /f >nul 2>&1
+echo      [OK] Windows Ink Workspace disabled
+
+echo  [G15] Disable Auto HDR (GPU overhead in SDR games)...
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\VideoSettings" /v EnableHDRForPlayback /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\VideoSettings" /v EnableHDRForPlayback /t REG_DWORD /d 0 /f >nul 2>&1
+echo      [OK] Auto HDR disabled (SDR = less GPU bandwidth used)
+
+echo  [G16] Disable MapsBroker + RetailDemo + Mixed Reality services...
+for %%S in ("MapsBroker" "RetailDemo" "MixedRealityOpenXRSvc" "WalletService" "TabletInputService") do (
+    sc stop %%S >nul 2>&1
+    sc config %%S start=disabled >nul 2>&1
+)
+echo      [OK] Unused services killed
+
+echo  [G17] Disable Connected User Experiences (telemetry pipe)...
+sc stop "DiagTrack" >nul 2>&1
+sc config "DiagTrack" start=disabled >nul 2>&1
+sc stop "diagsvc" >nul 2>&1
+sc config "diagsvc" start=disabled >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v AllowTelemetry /t REG_DWORD /d 0 /f >nul 2>&1
+echo      [OK] All telemetry pipes blocked
+
+echo  [G18] Set DPI scaling for Valorant EXE (override high DPI)...
+reg add "HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" /v "C:\Riot Games\VALORANT\live\VALORANT-Win64-Shipping.exe" /t REG_SZ /d "~ HIGHDPIAWARE" /f >nul 2>&1
+echo      [OK] DPI scaling = application controlled (no Windows blur)
+
+echo  [G19] Disable Cortana search indexing + web results...
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v BingSearchEnabled /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v CortanaConsent /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v DisableWebSearch /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v AllowCortana /t REG_DWORD /d 0 /f >nul 2>&1
+sc stop "WSearch" >nul 2>&1
+sc config "WSearch" start=disabled >nul 2>&1
+echo      [OK] Cortana + web search disabled
+
+echo  [G20] Flush DNS + reset Winsock + clear ARP cache (clean connection)...
+ipconfig /flushdns >nul 2>&1
+ipconfig /registerdns >nul 2>&1
+netsh winsock reset >nul 2>&1
+netsh int ip reset >nul 2>&1
+arp -d * >nul 2>&1
+echo      [OK] Network stack fully flushed and reset
+
+:: ============================================================
+echo.
 echo  ##################################################
-echo  #   ALL DONE! FULL BOOST + EXITLAG TWEAKS        #
+echo  #   ALL DONE! FULL BOOST + ALL MODULES           #
 echo  #                                                #
-echo  #   ExitLag-style tweaks applied:                #
-echo  #   - Nagle OFF  ^| LSO OFF  ^| RSC OFF            #
-echo  #   - Flow Ctrl OFF ^| Intr. Moderation OFF       #
-echo  #   - DSCP 46 QoS ^| MMCSS High ^| 0.5ms timer    #
+echo  #   A: FPS Uncap + Config Patches                #
+echo  #   B: Gaming Boost (HAGS/GameMode/MPO/QoS)      #
+echo  #   C: Deep Boost (ULPS/ASPM/UDP buffers)        #
+echo  #   D: Startup Cleaner                           #
+echo  #   E: ExitLag-Style Network Tweaks              #
+echo  #   F: Runtime Booster (PLAY_VALORANT_BOOSTED)   #
+echo  #   G: 20 Windows FPS Tweaks                     #
 echo  #                                                #
 echo  #   SET THESE MANUALLY IN VALORANT:              #
 echo  #   - Display Mode    = FULLSCREEN               #
 echo  #   - Frame Rate Cap  = OFF                      #
 echo  #   - V-Sync          = OFF                      #
+echo  #   - Shadows         = OFF                      #
 echo  #   - Multithreaded Rendering = ON               #
 echo  #   - Raw Input Buffer = ON                      #
 echo  #   - All Quality     = Low                      #
 echo  #                                                #
 echo  #   >>> USE PLAY_VALORANT_BOOSTED.bat to launch  #
-echo  #   RESTART PC for HAGS + MPO + Virtual Memory   #
+echo  #   RESTART PC after running this script         #
 echo  ##################################################
 echo.
 timeout /t 10 /nobreak >nul
