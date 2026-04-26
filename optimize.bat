@@ -15,8 +15,7 @@ echo.
 echo  ##################################################
 echo  #   VALORANT FULL OPTIMIZER  ^|  Dell G5 5505    #
 echo  #   AMD Ryzen 5 4600H + RX 5600M                #
-echo  #   Modules: FPS Uncap + Gaming Boost +          #
-echo  #            Deep Boost + Startup Cleaner        #
+echo  #   Top 20 Tweaks + Deep System Optimization     #
 echo  ##################################################
 echo.
 timeout /t 3 /nobreak >nul
@@ -35,13 +34,13 @@ for /r "%LOCALAPPDATA%\VALORANT" %%F in (GameUserSettings.ini) do (
     echo      [OK] Patched: %%~nxF
 )
 
-echo  [A2] Patching Scalability.ini (VSync + FPS limit)...
+echo  [A2] Patching Scalability.ini...
 for /r "%LOCALAPPDATA%\VALORANT" %%F in (Scalability.ini) do (
     powershell -Command "$f='%%F';if(Test-Path $f){$c=Get-Content $f -Raw;$c=$c -replace 'r.VSync=1','r.VSync=0';$c=$c -replace 'r.FrameRateLimit=\d+','r.FrameRateLimit=0';Set-Content -Path $f -Value $c -NoNewline}" >nul 2>&1
     echo      [OK] Patched Scalability.ini
 )
 
-echo  [A3] Patching Engine.ini (FPS + smooth frame rate)...
+echo  [A3] Patching Engine.ini...
 for /r "%LOCALAPPDATA%\VALORANT\Saved\Config" %%D in (.) do (
     if exist "%%D\Engine.ini" (
         powershell -Command "$f='%%D\Engine.ini';$c=Get-Content $f -Raw -ErrorAction SilentlyContinue;if(-not $c){$c=''};$c=$c -replace 'r\.FrameRateLimit=\d+','';$c=$c -replace 'bSmoothFrameRate=.*','';$add=\"`r`n[/Script/Engine.ConsoleSettings]`r`nr.FrameRateLimit=0`r`n`r`n[/Script/Engine.Engine]`r`nbSmoothFrameRate=False`r`n\";$c+=$add;Set-Content -Path $f -Value $c -NoNewline" >nul 2>&1
@@ -49,15 +48,23 @@ for /r "%LOCALAPPDATA%\VALORANT\Saved\Config" %%D in (.) do (
     )
 )
 
-echo  [A4] Disable Radeon Chill + Enhanced Sync...
+echo  [A4] Disable Fullscreen Optimizations on Valorant EXE...
+set VALO_EXE=C:\Riot Games\VALORANT\live\VALORANT-Win64-Shipping.exe
+reg add "HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" /v "%VALO_EXE%" /t REG_SZ /d "~ DISABLEDXMAXIMIZEDWINDOWEDMODE" /f >nul 2>&1
+echo      [OK] Fullscreen optimizations disabled for Valorant
+
+echo  [A5] Set Valorant GPU preference to High Performance...
+reg add "HKCU\Software\Microsoft\DirectX\UserGpuPreferences" /v "%VALO_EXE%" /t REG_SZ /d "GpuPreference=2;" /f >nul 2>&1
+echo      [OK] Valorant = High Performance GPU
+
+echo  [A6] Disable Radeon Chill + Enhanced Sync...
 reg add "HKCU\Software\AMD\CN" /v "Chill" /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKCU\Software\ATI\ACE\Settings\VALORANT.exe" /v "Chill_Enabled" /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKCU\Software\ATI\ACE\Settings\VALORANT.exe" /v "VSyncControl" /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKCU\Software\ATI\ACE\Settings\VALORANT.exe" /v "FrameRateTarget" /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKCU\Software\AMD\CN" /v "EnhancedSync" /t REG_DWORD /d 0 /f >nul 2>&1
 echo      [OK] Radeon Chill + Enhanced Sync disabled
 
-echo  [A5] CPU max clocks (no throttle)...
+echo  [A7] CPU max clocks...
 powercfg -setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMIN 100 >nul 2>&1
 powercfg -setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMAX 100 >nul 2>&1
 powercfg -setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PERFBOOSTMODE 2 >nul 2>&1
@@ -68,82 +75,102 @@ echo      [OK] CPU locked to MAX clock
 :: ============================================================
 echo.
 echo  ========================================================
-echo   MODULE B: GAMING BOOST (GOD MODE)
+echo   MODULE B: GAMING BOOST
 echo  ========================================================
 echo.
 
-echo  [B1] Power Plan - Ultimate Performance...
+echo  [B1] Ultimate Performance Power Plan...
 powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 >nul 2>&1
 powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61 >nul 2>&1
-echo      [OK] Ultimate Performance plan active
+echo      [OK] Ultimate Performance active
 
-echo  [B2] CPU Timer + Dynamic Tick...
+echo  [B2] CPU Timer + Core Parking disable...
 bcdedit /deletevalue useplatformclock >nul 2>&1
 bcdedit /set disabledynamictick yes >nul 2>&1
-echo      [OK] Timer optimized
-
-echo  [B3] Disable CPU Core Parking...
 powercfg -setacvalueindex SCHEME_CURRENT SUB_PROCESSOR CPMINCORES 100 >nul 2>&1
-echo      [OK] Core parking disabled
+echo      [OK] Timer optimized + core parking off
 
-echo  [B4] Kill background bloat processes...
+echo  [B3] Kill background bloat...
 taskkill /f /im OneDrive.exe >nul 2>&1
 taskkill /f /im Cortana.exe >nul 2>&1
 taskkill /f /im YourPhone.exe >nul 2>&1
 echo      [OK] Bloat killed
 
-echo  [B5] Disable heavy services (SysMain, WSearch, DiagTrack)...
+echo  [B4] Disable heavy services...
 for %%S in ("SysMain" "WSearch" "DiagTrack" "dmwappushservice" "Fax") do (
     sc stop %%S >nul 2>&1
     sc config %%S start=disabled >nul 2>&1
 )
 echo      [OK] Heavy services disabled
 
-echo  [B6] GPU + Network priority registry boost...
+echo  [B5] Enable Game Mode (CPU thread priority for game)...
+reg add "HKCU\Software\Microsoft\GameBar" /v "AllowAutoGameMode" /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\GameBar" /v "AutoGameModeEnabled" /t REG_DWORD /d 1 /f >nul 2>&1
+echo      [OK] Game Mode ENABLED
+
+echo  [B6] Enable HAGS (GPU manages own memory)...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" /v "HwSchMode" /t REG_DWORD /d 2 /f >nul 2>&1
+echo      [OK] HAGS enabled
+
+echo  [B7] Disable Xbox Game Bar + DVR captures...
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\GameDVR" /v AppCaptureEnabled /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\System\GameConfigStore" /v GameDVR_Enabled /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v AllowGameDVR /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\PolicyManager\default\ApplicationManagement\AllowGameDVR" /v value /t REG_DWORD /d 0 /f >nul 2>&1
+echo      [OK] Xbox Game Bar + DVR disabled
+
+echo  [B8] Disable MPO (fixes alt-tab crash + screen flicker)...
+reg add "HKLM\SOFTWARE\Microsoft\Windows\Dwm" /v "OverlayTestMode" /t REG_DWORD /d 5 /f >nul 2>&1
+reg add "HKLM\System\CurrentControlSet\Control\GraphicsDrivers" /v "DisableOverlays" /t REG_DWORD /d 1 /f >nul 2>&1
+echo      [OK] MPO disabled
+
+echo  [B9] Disable Transparency + Animations (best performance)...
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v EnableTransparency /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v VisualFXSetting /t REG_DWORD /d 2 /f >nul 2>&1
+reg add "HKCU\Control Panel\Desktop" /v UserPreferencesMask /t REG_BINARY /d 9012038010000000 /f >nul 2>&1
+reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_SZ /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarAnimations /t REG_DWORD /d 0 /f >nul 2>&1
+echo      [OK] Transparency + animations off
+
+echo  [B10] Disable Mouse Acceleration (consistent aim)...
+reg add "HKCU\Control Panel\Mouse" /v MouseSpeed /t REG_SZ /d 0 /f >nul 2>&1
+reg add "HKCU\Control Panel\Mouse" /v MouseThreshold1 /t REG_SZ /d 0 /f >nul 2>&1
+reg add "HKCU\Control Panel\Mouse" /v MouseThreshold2 /t REG_SZ /d 0 /f >nul 2>&1
+echo      [OK] Mouse acceleration disabled (Enhance pointer precision OFF)
+
+echo  [B11] Configure Virtual Memory (1.5x RAM = 12288 MB)...
+powershell -Command "$cs=Get-WmiObject Win32_ComputerSystem;$cs.AutomaticManagedPagefile=$false;$cs.Put()|Out-Null;$pf=Get-WmiObject Win32_PageFileSetting -ErrorAction SilentlyContinue;if($pf){$pf.Delete()};Set-WmiInstance -Class Win32_PageFileSetting -Arguments @{Name='C:\pagefile.sys';InitialSize=4096;MaximumSize=12288} -ErrorAction SilentlyContinue|Out-Null" >nul 2>&1
+echo      [OK] Virtual memory = 4096MB initial / 12288MB max
+
+echo  [B12] GPU + Network priority boost...
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" /v Win32PrioritySeparation /t REG_DWORD /d 38 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "GPU Priority" /t REG_DWORD /d 8 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "SystemResponsiveness" /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "NetworkThrottlingIndex" /t REG_DWORD /d 4294967295 /f >nul 2>&1
 echo      [OK] GPU + network priority boosted
 
-echo  [B7] ENABLE Game Mode (prioritizes game threads)...
-reg add "HKCU\Software\Microsoft\GameBar" /v "AllowAutoGameMode" /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKCU\Software\Microsoft\GameBar" /v "AutoGameModeEnabled" /t REG_DWORD /d 1 /f >nul 2>&1
-echo      [OK] Game Mode ENABLED (CPU thread priority for game)
-
-echo  [B8] ENABLE Hardware-Accelerated GPU Scheduling (HAGS)...
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" /v "HwSchMode" /t REG_DWORD /d 2 /f >nul 2>&1
-echo      [OK] HAGS enabled (GPU manages own memory scheduling)
-
-echo  [B9] Disable MPO - fixes alt-tab crashes + screen flicker...
-reg add "HKLM\SOFTWARE\Microsoft\Windows\Dwm" /v "OverlayTestMode" /t REG_DWORD /d 5 /f >nul 2>&1
-reg add "HKLM\System\CurrentControlSet\Control\GraphicsDrivers" /v "DisableOverlays" /t REG_DWORD /d 1 /f >nul 2>&1
-echo      [OK] MPO (Multi-Plane Overlay) disabled
-
-echo  [B10] QoS DSCP 46 tag on Valorant UDP (ExitLag trick)...
+echo  [B13] QoS DSCP 46 on Valorant UDP...
 powershell -Command "Get-NetQosPolicy -Name 'Valorant' -ErrorAction SilentlyContinue | Remove-NetQosPolicy -Confirm:$false -ErrorAction SilentlyContinue; New-NetQosPolicy -Name 'Valorant' -AppPathNameMatchCondition 'VALORANT-Win64-Shipping.exe' -IPProtocolMatchCondition UDP -DSCPAction 46 -NetworkProfile All -ErrorAction SilentlyContinue" >nul 2>&1
-echo      [OK] Valorant UDP = DSCP 46 (highest network priority)
+echo      [OK] Valorant UDP = DSCP 46
 
-echo  [B11] Disable background apps + visual tweaks...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" /v GlobalUserDisabled /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKCU\Control Panel\Desktop" /v MenuShowDelay /t REG_SZ /d 0 /f >nul 2>&1
-reg add "HKCU\Control Panel\Desktop" /v DragFullWindows /t REG_SZ /d 0 /f >nul 2>&1
-echo      [OK] Background apps off + visual tweaks applied
+echo  [B14] Set DNS to Cloudflare 1.1.1.1 (lower latency)...
+powershell -Command "$a=Get-NetAdapter|Where-Object{$_.Status -eq 'Up'}|Select-Object -First 1;if($a){Set-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ServerAddresses ('1.1.1.1','1.0.0.1')}" >nul 2>&1
+ipconfig /flushdns >nul 2>&1
+echo      [OK] DNS = Cloudflare 1.1.1.1 + flushed
 
-echo  [B12] Network TCP/IP latency tweaks...
+echo  [B15] Network TCP tweaks...
 netsh int tcp set global autotuninglevel=disabled >nul 2>&1
 netsh int tcp set global chimney=enabled >nul 2>&1
 netsh int tcp set global rss=enabled >nul 2>&1
 netsh int tcp set global ecncapability=disabled >nul 2>&1
-echo      [OK] Network latency optimized
+echo      [OK] TCP latency optimized
 
-echo  [B13] SSD TRIM + disable memory compression + flush temp...
+echo  [B16] SSD TRIM + disable memory compression + clear temp...
 fsutil behavior set DisableDeleteNotify 0 >nul 2>&1
 powershell -Command "Disable-MMAgent -mc" >nul 2>&1
-ipconfig /flushdns >nul 2>&1
 del /s /f /q %temp%\* >nul 2>&1
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize" /v StartupDelayInMSec /t REG_DWORD /d 0 /f >nul 2>&1
-echo      [OK] SSD + RAM tuned, temp cleared
+echo      [OK] SSD + RAM tuned
 
 :: ============================================================
 echo.
@@ -156,27 +183,26 @@ echo  [C1] Kill background scheduled tasks...
 schtasks /Change /TN "Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser" /Disable >nul 2>&1
 schtasks /Change /TN "Microsoft\Windows\Application Experience\ProgramDataUpdater" /Disable >nul 2>&1
 schtasks /Change /TN "Microsoft\Windows\Customer Experience Improvement Program\Consolidator" /Disable >nul 2>&1
-schtasks /Change /TN "Microsoft\Windows\Customer Experience Improvement Program\UsbCeip" /Disable >nul 2>&1
 schtasks /Change /TN "Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector" /Disable >nul 2>&1
 schtasks /Change /TN "Microsoft\Windows\Feedback\Siuf\DmClient" /Disable >nul 2>&1
 schtasks /Change /TN "Microsoft\Windows\Windows Error Reporting\QueueReporting" /Disable >nul 2>&1
 schtasks /Change /TN "Microsoft\Windows\Maps\MapsUpdateTask" /Disable >nul 2>&1
 schtasks /Change /TN "Microsoft\Windows\Maintenance\WinSAT" /Disable >nul 2>&1
-echo      [OK] Background scheduled tasks killed
+echo      [OK] Scheduled tasks killed
 
-echo  [C2] Disable USB Selective Suspend (no mouse/KB stutter)...
+echo  [C2] Disable USB Selective Suspend...
 powercfg -setacvalueindex SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb8f07e226 0 >nul 2>&1
 powercfg -setdcvalueindex SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb8f07e226 0 >nul 2>&1
 powercfg /setactive scheme_current >nul 2>&1
 echo      [OK] USB Selective Suspend disabled
 
-echo  [C3] Disable PCIe ASPM (GPU always full power)...
+echo  [C3] Disable PCIe ASPM...
 powercfg -setacvalueindex SCHEME_CURRENT SUB_PCIEXPRESS ASPM 0 >nul 2>&1
 powercfg -setdcvalueindex SCHEME_CURRENT SUB_PCIEXPRESS ASPM 0 >nul 2>&1
 powercfg /setactive scheme_current >nul 2>&1
 echo      [OK] PCIe ASPM disabled
 
-echo  [C4] Disable Power Throttling (no silent thread throttle)...
+echo  [C4] Disable Power Throttling...
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerThrottling" /v PowerThrottlingOff /t REG_DWORD /d 1 /f >nul 2>&1
 echo      [OK] Power throttling off
 
@@ -188,51 +214,47 @@ reg add "HKCU\Software\ATI\ACE\Settings\VALORANT.exe" /v "TextureFilteringQualit
 reg add "HKCU\Software\ATI\ACE\Settings\VALORANT.exe" /v "AnisotropicFilteringLevel" /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKCU\Software\ATI\ACE\Settings\VALORANT.exe" /v "FlipQueueSize" /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKCU\Software\ATI\ACE\Settings\VALORANT.exe" /v "PowerEfficiency" /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKCU\Software\AMD\CN" /v "TextureFilterQuality" /t REG_DWORD /d 0 /f >nul 2>&1
-echo      [OK] Radeon Anti-Lag + Performance mode set
+echo      [OK] Radeon Anti-Lag + Performance mode
 
-echo  [C6] Disable Prefetch/Superfetch (NVMe SSD tuned)...
+echo  [C6] Disable Prefetch/Superfetch (NVMe SSD)...
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v EnablePrefetcher /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v EnableSuperfetch /t REG_DWORD /d 0 /f >nul 2>&1
 sc stop SysMain >nul 2>&1
 sc config SysMain start=disabled >nul 2>&1
 echo      [OK] Prefetch/Superfetch off
 
-echo  [C7] UDP Socket Buffer Optimization (Valorant packet headroom)...
+echo  [C7] UDP Socket Buffers (64KB headroom for Valorant)...
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\AFD\Parameters" /v DefaultReceiveWindow /t REG_DWORD /d 65536 /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\AFD\Parameters" /v DefaultSendWindow /t REG_DWORD /d 65536 /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\AFD\Parameters" /v FastSendDatagramThreshold /t REG_DWORD /d 1024 /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\AFD\Parameters" /v IgnorePushBitOnReceives /t REG_DWORD /d 1 /f >nul 2>&1
 echo      [OK] UDP socket buffers = 64KB
 
-echo  [C8] Disable telemetry services (no disk spikes mid-match)...
-for %%S in ("DiagTrack" "dmwappushservice" "diagnosticshub.standardcollector.service" "WerSvc") do (
+echo  [C8] Disable telemetry (no disk spikes mid-match)...
+for %%S in ("DiagTrack" "dmwappushservice" "WerSvc") do (
     sc stop %%S >nul 2>&1
     sc config %%S start=disabled >nul 2>&1
 )
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v AllowTelemetry /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Privacy" /v TailoredExperiencesWithDiagnosticDataEnabled /t REG_DWORD /d 0 /f >nul 2>&1
-echo      [OK] All telemetry disabled
+echo      [OK] Telemetry disabled
 
 echo  [C9] Disable AMD ULPS (no map-load stutter)...
-powershell -Command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*' -ErrorAction SilentlyContinue | Where-Object { $_.DriverDesc -like '*5600*' -or $_.DriverDesc -like '*Navi*' -or $_.DriverDesc -like '*Radeon*' } | ForEach-Object { Set-ItemProperty -Path $_.PSPath -Name 'EnableULPS' -Value 0 -ErrorAction SilentlyContinue; Set-ItemProperty -Path $_.PSPath -Name 'EnableULPS_NA' -Value 0 -ErrorAction SilentlyContinue; Set-ItemProperty -Path $_.PSPath -Name 'PP_SclkDeepSleepDisable' -Value 1 -ErrorAction SilentlyContinue }" >nul 2>&1
-echo      [OK] ULPS disabled - RX 5600M stays awake
+powershell -Command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\*' -ErrorAction SilentlyContinue | Where-Object { $_.DriverDesc -like '*5600*' -or $_.DriverDesc -like '*Navi*' -or $_.DriverDesc -like '*Radeon*' } | ForEach-Object { Set-ItemProperty -Path $_.PSPath -Name 'EnableULPS' -Value 0 -ErrorAction SilentlyContinue; Set-ItemProperty -Path $_.PSPath -Name 'EnableULPS_NA' -Value 0 -ErrorAction SilentlyContinue }" >nul 2>&1
+echo      [OK] ULPS disabled
 
-echo  [C10] Flush DNS + clear prefetch cache + RAM standby...
+echo  [C10] Disable unused network adapters (reduce IRQ/DPC latency)...
+powershell -Command "Get-NetAdapter | Where-Object { $_.Status -eq 'Disconnected' } | ForEach-Object { Disable-NetAdapter -Name $_.Name -Confirm:$false -ErrorAction SilentlyContinue }" >nul 2>&1
+echo      [OK] Disconnected adapters disabled
+
+echo  [C11] Flush DNS + clear prefetch + RAM standby...
 ipconfig /flushdns >nul 2>&1
 ipconfig /registerdns >nul 2>&1
 del /f /q "%SystemRoot%\Prefetch\*" >nul 2>&1
-powershell -Command "[System.GC]::Collect(); [System.GC]::WaitForPendingFinalizers()" >nul 2>&1
-echo      [OK] DNS flushed + RAM cleared
+powershell -Command "[System.GC]::Collect();[System.GC]::WaitForPendingFinalizers()" >nul 2>&1
+echo      [OK] DNS flushed + RAM + prefetch cleared
 
-echo  [C11] IRQ - Disable unused network adapters (reduce DPC latency)...
-powershell -Command "Get-NetAdapter | Where-Object { $_.Status -eq 'Disconnected' -and ($_.Name -like '*Wi-Fi*' -or $_.Name -like '*Wireless*' -or $_.Name -like '*Realtek*') } | ForEach-Object { Disable-NetAdapter -Name $_.Name -Confirm:$false -ErrorAction SilentlyContinue; Write-Host \"  [OFF] $($_.Name)\" }" 2>nul
-echo      [OK] Unused/disconnected adapters disabled (less IRQ noise)
-
-:: NOTE: VBS/Memory Integrity is intentionally NOT disabled.
-:: Riot Vanguard anti-cheat requires it to remain enabled.
-echo  [C12] VBS/Memory Integrity - SKIPPED (required by Vanguard)
-echo      [INFO] Do NOT disable Memory Integrity - Vanguard needs it
+:: VBS/Memory Integrity intentionally NOT disabled - Vanguard requires it
+echo  [C12] VBS/Memory Integrity = SKIPPED (Vanguard anti-cheat requires it)
 
 :: ============================================================
 echo.
@@ -242,55 +264,50 @@ echo  ========================================================
 echo.
 
 echo  [D1] Disabling non-essential startup programs...
-powershell -Command "$paths=@('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run','HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run');$bloat=@('OneDrive','Cortana','Spotify','AdobeGCInvoker','iTunesHelper','GoogleUpdate','CCleaner','EpicGamesLauncher','Skype','Teams','YourPhone','Dropbox','NVDisplay','NvBackend','AdobeUpdater');foreach($p in $paths){if(Test-Path $p){$k=Get-ItemProperty -Path $p -ErrorAction SilentlyContinue;if($k){$k.PSObject.Properties|Where-Object{$_.Name -notlike 'PS*'}|ForEach-Object{$n=$_.Name;foreach($b in $bloat){if($n -like \"*$b*\"){Remove-ItemProperty -Path $p -Name $n -ErrorAction SilentlyContinue}}}}}}" 2>nul
+powershell -Command "$paths=@('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run','HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run');$bloat=@('OneDrive','Cortana','Spotify','AdobeGCInvoker','iTunesHelper','GoogleUpdate','CCleaner','EpicGamesLauncher','Skype','Teams','YourPhone','Dropbox','NVDisplay','NvBackend');foreach($p in $paths){if(Test-Path $p){$k=Get-ItemProperty -Path $p -ErrorAction SilentlyContinue;if($k){$k.PSObject.Properties|Where-Object{$_.Name -notlike 'PS*'}|ForEach-Object{$n=$_.Name;foreach($b in $bloat){if($n -like \"*$b*\"){Remove-ItemProperty -Path $p -Name $n -ErrorAction SilentlyContinue}}}}}}" 2>nul
 echo      [OK] Non-essential startup programs disabled
 
-echo  [D2] Disable Windows Fast Startup (clean boot every time)...
+echo  [D2] Disable Fast Startup (clean boot)...
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power" /v HiberbootEnabled /t REG_DWORD /d 0 /f >nul 2>&1
 powercfg /hibernate off >nul 2>&1
 echo      [OK] Fast Startup disabled
 
-echo  [D3] Clear Windows Update cache (frees GBs)...
+echo  [D3] Clear Windows Update cache...
 net stop wuauserv >nul 2>&1
 net stop bits >nul 2>&1
 if exist "C:\Windows\SoftwareDistribution\Download" (
     rd /s /q "C:\Windows\SoftwareDistribution\Download" >nul 2>&1
     md "C:\Windows\SoftwareDistribution\Download" >nul 2>&1
 )
-if exist "C:\Windows\Logs\CBS\CBS.log" del /f /q "C:\Windows\Logs\CBS\CBS.log" >nul 2>&1
 echo      [OK] Windows Update cache cleared
 
-echo  [D4] Clear WER dumps + event logs + shader cache...
+echo  [D4] Clear WER + event logs + shader cache...
 if exist "C:\ProgramData\Microsoft\Windows\WER\ReportArchive" rd /s /q "C:\ProgramData\Microsoft\Windows\WER\ReportArchive" >nul 2>&1
 if exist "C:\ProgramData\Microsoft\Windows\WER\ReportQueue" rd /s /q "C:\ProgramData\Microsoft\Windows\WER\ReportQueue" >nul 2>&1
 if exist "%LOCALAPPDATA%\D3DSCache" rd /s /q "%LOCALAPPDATA%\D3DSCache" >nul 2>&1
 if exist "%LOCALAPPDATA%\AMD\DxCache" del /s /f /q "%LOCALAPPDATA%\AMD\DxCache\*" >nul 2>&1
 for /f %%G in ('wevtutil el') do wevtutil cl "%%G" >nul 2>&1
-echo      [OK] WER + event logs + D3D/AMD shader cache cleared
+echo      [OK] WER + event logs + shader cache cleared
 
-echo  [D5] Free disk space after cleanup...
+echo  [D5] Free disk space report...
 powershell -Command "$d=Get-PSDrive C;$free=[math]::Round($d.Free/1GB,2);$total=[math]::Round(($d.Used+$d.Free)/1GB,2);Write-Host \"  C: Free: $free GB / $total GB\" -ForegroundColor Green"
 
 :: ============================================================
 echo.
 echo  ##################################################
-echo  #   ALL OPTIMIZATIONS COMPLETE!                  #
+echo  #   ALL DONE! TOP 20 + DEEP TWEAKS APPLIED       #
 echo  #                                                #
-echo  #   [A] FPS Uncap - configs patched             #
-echo  #   [B] Gaming Boost - power + services done    #
-echo  #   [C] Deep Boost - 11 deep tweaks done        #
-echo  #   [D] Startup Cleaner - bloat removed         #
+echo  #   SET THESE MANUALLY IN VALORANT:              #
+echo  #   - Display Mode    = FULLSCREEN               #
+echo  #   - Frame Rate Cap  = OFF                      #
+echo  #   - V-Sync          = OFF                      #
+echo  #   - Multithreaded Rendering = ON               #
+echo  #   - Raw Input Buffer = ON                      #
+echo  #   - Material Quality = Low                     #
+echo  #   - Detail Quality   = Low                     #
+echo  #   - Texture Quality  = Low                     #
 echo  #                                                #
-echo  #   IN-GAME SETTINGS TO SET MANUALLY:           #
-echo  #   - Display Mode = FULLSCREEN                 #
-echo  #   - Frame Rate Limit = OFF                    #
-echo  #   - V-Sync = OFF                              #
-echo  #   - Multithreaded Rendering = ON              #
-echo  #   - Raw Input Buffer = ON                     #
-echo  #   - Material Quality = Low                    #
-echo  #   - Detail Quality = Low                      #
-echo  #                                               #
-echo  #   RESTART PC after running for full effect    #
+echo  #   RESTART PC for HAGS + MPO + Virtual Memory   #
 echo  ##################################################
 echo.
 timeout /t 10 /nobreak >nul
