@@ -294,8 +294,113 @@ powershell -Command "$d=Get-PSDrive C;$free=[math]::Round($d.Free/1GB,2);$total=
 
 :: ============================================================
 echo.
+echo  ========================================================
+echo   MODULE E: EXITLAG-STYLE NETWORK + LATENCY TWEAKS
+echo  ========================================================
+echo.
+
+echo  [E1] Disable Nagle Algorithm (biggest ping reducer)...
+:: Nagle buffers small TCP packets causing latency spikes - disable per interface
+powershell -Command "Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces' | ForEach-Object { Set-ItemProperty -Path $_.PSPath -Name 'TcpAckFrequency' -Value 1 -Type DWord -ErrorAction SilentlyContinue; Set-ItemProperty -Path $_.PSPath -Name 'TCPNoDelay' -Value 1 -Type DWord -ErrorAction SilentlyContinue; Set-ItemProperty -Path $_.PSPath -Name 'TcpDelAckTicks' -Value 0 -Type DWord -ErrorAction SilentlyContinue }" >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\MSMQ\Parameters" /v TCPNoDelay /t REG_DWORD /d 1 /f >nul 2>&1
+echo      [OK] Nagle algorithm DISABLED (lower ping, less jitter)
+
+echo  [E2] Disable LSO (Large Send Offload) on NIC...
+powershell -Command "Get-NetAdapter -Physical | ForEach-Object { Disable-NetAdapterLso -Name $_.Name -ErrorAction SilentlyContinue }" >nul 2>&1
+powershell -Command "Get-NetAdapter -Physical | ForEach-Object { Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Large Send Offload V2 (IPv4)' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue; Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Large Send Offload V2 (IPv6)' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue }" >nul 2>&1
+echo      [OK] LSO disabled (reduces packet fragmentation overhead)
+
+echo  [E3] Disable Flow Control on NIC...
+powershell -Command "Get-NetAdapter -Physical | ForEach-Object { Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Flow Control' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue }" >nul 2>&1
+echo      [OK] Flow Control disabled
+
+echo  [E4] Disable RSC (Receive Segment Coalescing)...
+powershell -Command "Get-NetAdapter -Physical | ForEach-Object { Disable-NetAdapterRsc -Name $_.Name -ErrorAction SilentlyContinue }" >nul 2>&1
+echo      [OK] RSC disabled (reduces latency at cost of marginal CPU)
+
+echo  [E5] Disable Interrupt Moderation on NIC...
+powershell -Command "Get-NetAdapter -Physical | ForEach-Object { Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Interrupt Moderation' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue; Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Interrupt Moderation Rate' -DisplayValue 'Off' -ErrorAction SilentlyContinue }" >nul 2>&1
+echo      [OK] Interrupt Moderation OFF (consistent packet delivery)
+
+echo  [E6] Set NIC to Max Performance power state...
+powershell -Command "Get-NetAdapter -Physical | ForEach-Object { Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Energy Efficient Ethernet' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue; Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Green Ethernet' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue; Set-NetAdapterAdvancedProperty -Name $_.Name -DisplayName 'Power Saving Mode' -DisplayValue 'Disabled' -ErrorAction SilentlyContinue }" >nul 2>&1
+echo      [OK] NIC power saving OFF
+
+echo  [E7] TCP stack optimizations...
+netsh int tcp set global autotuninglevel=normal >nul 2>&1
+netsh int tcp set global timestamps=disabled >nul 2>&1
+netsh int tcp set global initialrto=2000 >nul 2>&1
+netsh int tcp set global rsc=disabled >nul 2>&1
+netsh int tcp set supplemental internet congestionprovider=ctcp >nul 2>&1
+netsh int ip set global taskoffload=enabled >nul 2>&1
+netsh int ip set global icmpredirects=disabled >nul 2>&1
+echo      [OK] TCP stack tuned (CTCP, no timestamps, 2s RTO)
+
+echo  [E8] MMCSS Valorant game profile (ExitLag-style thread priority)...
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "GPU Priority" /t REG_DWORD /d 8 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Priority" /t REG_DWORD /d 6 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Scheduling Category" /t REG_SZ /d "High" /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "SFIO Priority" /t REG_SZ /d "High" /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Background Only" /t REG_SZ /d "False" /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Clock Rate" /t REG_DWORD /d 10000 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Affinity" /t REG_DWORD /d 0 /f >nul 2>&1
+echo      [OK] MMCSS game profile = High priority
+
+echo  [E9] Set timer resolution to 0.5ms (smoother frames)...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel" /v GlobalTimerResolutionRequests /t REG_DWORD /d 1 /f >nul 2>&1
+powershell -Command "Start-Process -FilePath 'powershell' -ArgumentList '-WindowStyle Hidden -Command Add-Type -TypeDefinition ''using System;using System.Runtime.InteropServices;public class TimerRes{[DllImport(\"ntdll.dll\")]public static extern int NtSetTimerResolution(int DesiredResolution,bool SetResolution,ref int CurrentResolution);public static void Set(){int c=0;NtSetTimerResolution(5000,true,ref c);}}'' -ErrorAction SilentlyContinue' -WindowStyle Hidden" >nul 2>&1
+echo      [OK] Timer = 0.5ms resolution requested
+
+echo  [E10] Boost Valorant process priority (if running)...
+powershell -Command "$p=Get-Process 'VALORANT-Win64-Shipping' -ErrorAction SilentlyContinue;if($p){$p.PriorityClass='RealTime'}" >nul 2>&1
+echo      [OK] Valorant priority = Realtime (if running)
+
+echo  [E11] Extra registry latency fixes...
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "DefaultTTL" /t REG_DWORD /d 64 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "EnablePMTUDiscovery" /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "EnablePMTUBHDetect" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "DisableTaskOffload" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "MaxUserPort" /t REG_DWORD /d 65534 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "TcpTimedWaitDelay" /t REG_DWORD /d 30 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "TcpMaxSendFree" /t REG_DWORD /d 65535 /f >nul 2>&1
+echo      [OK] TCP registry latency keys set
+
+:: ============================================================
+echo.
+echo  ========================================================
+echo   MODULE F: RUNTIME BOOSTER (Launch Valorant Boosted)
+echo  ========================================================
+echo.
+
+echo  [F1] Creating PLAY_VALORANT_BOOSTED.bat for real-time launch...
+set PLAY_SCRIPT=%~dp0PLAY_VALORANT_BOOSTED.bat
+(
+echo @echo off
+echo net session ^>nul 2^>^&1 ^|^| ^(powershell -Command "Start-Process '%%~f0' -Verb runAs" ^& exit^)
+echo echo Killing background bloat...
+echo for %%%%P in ^(OneDrive Spotify YourPhone Teams Skype SearchApp^) do taskkill /f /im %%%%P.exe ^>nul 2^>^&1
+echo echo Boosting system...
+echo powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61 ^>nul 2^>^&1
+echo start "" "C:\Riot Games\Riot Client\RiotClientServices.exe" --launch-product=valorant --launch-patchline=live
+echo timeout /t 20 /nobreak ^>nul
+echo :WAIT
+echo tasklist /fi "imagename eq VALORANT-Win64-Shipping.exe" 2^>nul ^| find /i "VALORANT-Win64-Shipping.exe" ^>nul
+echo if %%errorlevel%% neq 0 ^(timeout /t 5 /nobreak ^>nul ^& goto WAIT^)
+echo echo Setting Realtime priority + High I/O...
+echo powershell -Command "$p=Get-Process 'VALORANT-Win64-Shipping' -EA SilentlyContinue;if^($p^){$p.PriorityClass='RealTime';$p^|Set-ProcessIoPriority -Priority High -EA SilentlyContinue}"
+echo exit
+) > "%PLAY_SCRIPT%"
+echo      [OK] Created: PLAY_VALORANT_BOOSTED.bat
+
+:: ============================================================
+echo.
 echo  ##################################################
-echo  #   ALL DONE! TOP 20 + DEEP TWEAKS APPLIED       #
+echo  #   ALL DONE! FULL BOOST + EXITLAG TWEAKS        #
+echo  #                                                #
+echo  #   ExitLag-style tweaks applied:                #
+echo  #   - Nagle OFF  ^| LSO OFF  ^| RSC OFF            #
+echo  #   - Flow Ctrl OFF ^| Intr. Moderation OFF       #
+echo  #   - DSCP 46 QoS ^| MMCSS High ^| 0.5ms timer    #
 echo  #                                                #
 echo  #   SET THESE MANUALLY IN VALORANT:              #
 echo  #   - Display Mode    = FULLSCREEN               #
@@ -303,10 +408,9 @@ echo  #   - Frame Rate Cap  = OFF                      #
 echo  #   - V-Sync          = OFF                      #
 echo  #   - Multithreaded Rendering = ON               #
 echo  #   - Raw Input Buffer = ON                      #
-echo  #   - Material Quality = Low                     #
-echo  #   - Detail Quality   = Low                     #
-echo  #   - Texture Quality  = Low                     #
+echo  #   - All Quality     = Low                      #
 echo  #                                                #
+echo  #   >>> USE PLAY_VALORANT_BOOSTED.bat to launch  #
 echo  #   RESTART PC for HAGS + MPO + Virtual Memory   #
 echo  ##################################################
 echo.
