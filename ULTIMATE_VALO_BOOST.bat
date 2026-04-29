@@ -128,8 +128,16 @@ bcdedit /set useplatformtick yes >nul 2>&1
 bcdedit /deletevalue useplatformclock >nul 2>&1
 
 :: Disable Windows Visual Effects (Adjust for best performance)
-echo [*] Disabling Heavy Visual Effects...
+echo [*] Disabling Heavy Visual Effects and Transparency...
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v "VisualFXSetting" /t REG_DWORD /d 2 /f >nul 2>&1
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "EnableTransparency" /t REG_DWORD /d 0 /f >nul 2>&1
+
+:: Turn Off Mouse Acceleration (Enhance Pointer Precision)
+echo [*] Disabling Mouse Acceleration for consistent aim...
+reg add "HKCU\Control Panel\Mouse" /v "MouseSpeed" /t REG_SZ /d "0" /f >nul 2>&1
+reg add "HKCU\Control Panel\Mouse" /v "MouseThreshold1" /t REG_SZ /d "0" /f >nul 2>&1
+reg add "HKCU\Control Panel\Mouse" /v "MouseThreshold2" /t REG_SZ /d "0" /f >nul 2>&1
+
 
 :: Disable Background Apps globally
 echo [*] Disabling Windows Background Apps...
@@ -168,6 +176,9 @@ del /q /f /s C:\Windows\Prefetch\* >nul 2>&1
 echo [*] Setting Valorant CPU Priority to High...
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\VALORANT-Win64-Shipping.exe\PerfOptions" /v "CpuPriorityClass" /t REG_DWORD /d 3 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\VALORANT.exe\PerfOptions" /v "CpuPriorityClass" /t REG_DWORD /d 3 /f >nul 2>&1
+
+echo [*] Forcing High Performance GPU Preference for Valorant...
+reg add "HKCU\Software\Microsoft\DirectX\UserGpuPreferences" /v "C:\Riot Games\VALORANT\live\ShooterGame\Binaries\Win64\VALORANT-Win64-Shipping.exe" /t REG_SZ /d "GpuPreference=2;" /f >nul 2>&1
 
 echo [*] Applying QoS DSCP 46 for Valorant Network Traffic...
 powershell -Command "New-NetQosPolicy -Name 'Valorant' -AppPathNameMatchCondition 'VALORANT-Win64-Shipping.exe' -DSCPAction 46 -NetworkProfile All -ErrorAction SilentlyContinue" >nul 2>&1
