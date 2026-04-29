@@ -107,6 +107,12 @@ reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v "AllowGameDVR" /t 
 :: Disable Fullscreen Optimizations globally (Reduces input lag)
 reg add "HKCU\System\GameConfigStore" /v "GameDVR_FSEBehavior" /t REG_DWORD /d 2 /f >nul 2>&1
 
+:: Enable Hardware-Accelerated GPU Scheduling (HAGS)
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" /v "HwSchMode" /t REG_DWORD /d 2 /f >nul 2>&1
+
+:: Disable Multi-Plane Overlay (MPO) to reduce stutters and alt-tab crashes
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" /v "DisableOverlays" /t REG_DWORD /d 1 /f >nul 2>&1
+
 :: CPU & Memory Priority Tweaks
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "SystemResponsiveness" /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "NetworkThrottlingIndex" /t REG_DWORD /d 4294967295 /f >nul 2>&1
@@ -145,6 +151,8 @@ sc config "WSearch" start=disabled >nul 2>&1
 :: Diagnostic Policy Service
 sc stop "DPS" >nul 2>&1
 sc config "DPS" start=disabled >nul 2>&1
+:: Microsoft Compatibility Appraiser (prevents random disk spikes)
+schtasks /change /tn "\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser" /disable >nul 2>&1
 
 :: ==========================================
 :: 7. CLEAR JUNK / TEMP FILES
@@ -160,6 +168,9 @@ del /q /f /s C:\Windows\Prefetch\* >nul 2>&1
 echo [*] Setting Valorant CPU Priority to High...
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\VALORANT-Win64-Shipping.exe\PerfOptions" /v "CpuPriorityClass" /t REG_DWORD /d 3 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\VALORANT.exe\PerfOptions" /v "CpuPriorityClass" /t REG_DWORD /d 3 /f >nul 2>&1
+
+echo [*] Applying QoS DSCP 46 for Valorant Network Traffic...
+powershell -Command "New-NetQosPolicy -Name 'Valorant' -AppPathNameMatchCondition 'VALORANT-Win64-Shipping.exe' -DSCPAction 46 -NetworkProfile All -ErrorAction SilentlyContinue" >nul 2>&1
 
 echo.
 echo ===================================================
